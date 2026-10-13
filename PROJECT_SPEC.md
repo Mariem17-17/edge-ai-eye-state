@@ -30,13 +30,18 @@ The initial scope includes developing a binary classifier trained on cropped eye
 The project will be evaluated using four categories of metrics.
 
 ### Predictive metrics
+For binary metric calculation, the closed-eye class will initially be treated as the positive class:
+
+- Positive class: closed
+- Negative class: open
+
 - Accuracy
 - Precision
 - Recall
 - F1 score
 - Confusion matrix
-- False-open rate
-- False-closed rate
+- Closed-to-open error rate: closed eye predicted as open
+- Open-to-closed error rate: open eye predicted as closed
 
 ### Optimization metrics
 
@@ -57,7 +62,7 @@ The project will be evaluated using four categories of metrics.
 
 ### Deployment-oriented metrics
 
-Without hardware, we can still define hypothetical targets, for example:
+The following are provisional design targets for the first implementation. They are not validated hardware requirements and may be revised after dataset inspection and baseline experimentation. 
 1. Model file size: less than 5 MB
 2. Input resolution: no more than 128 × 128 initially
 3. Quantized format: INT8-compatible
@@ -91,7 +96,7 @@ The results are split into 3 categories:
 
 ## 7. Known limitations
 
-The currently present limitations in our project are 
+The initial project has the following known limitations:
 - No physical embedded target
 - Public dataset may not represent real driving conditions
 - Cropped eye images simplify the full problem
@@ -101,8 +106,7 @@ The currently present limitations in our project are
 - Host latency cannot be presented as embedded-target latency
 
 ## 8. Planned deliverables
-By the end of the project we plan to deliver the following:
-
+By the end of the project, the following deliverables are expected:
 - Dataset analysis report
 - Reproducible train/validation/test split
 - FP32 baseline model
