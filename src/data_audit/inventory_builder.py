@@ -16,6 +16,7 @@
 
 from pathlib import Path
 
+from src.data_audit.filename_parser import parse_mrl_filename
 
 ALLOWED_EXTENSIONS = {".png"}
 
@@ -43,4 +44,12 @@ def discover_image_files(dataset_root: str | Path) -> list:
     image_paths.sort()
     return image_paths
 
-discover_image_files(r"C:\Users\uid2018\Desktop\projects\edge-ai-eye-state\data\raw\mrlEyes_2018_01\data")
+def build_dataset_inventory(dataset_root: str | Path,)-> list:
+    root = Path(dataset_root)
+    image_paths = discover_image_files(root)
+    metadata_inventory = []
+    for image_path in image_paths:
+        one_metadata = parse_mrl_filename(image_path)
+        one_metadata['relative_path'] = str(image_path.relative_to(root))
+        metadata_inventory.append(one_metadata)
+    return metadata_inventory
