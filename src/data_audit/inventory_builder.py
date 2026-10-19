@@ -18,6 +18,8 @@ from pathlib import Path
 
 from src.data_audit.filename_parser import parse_mrl_filename
 
+from PIL import Image, UnidentifiedImageError
+
 ALLOWED_EXTENSIONS = {".png"}
 
 # 1. Recursively discover files
@@ -70,4 +72,35 @@ def build_dataset_inventory(dataset_root: str | Path,) -> tuple[list[dict], list
                 failure = {"relative_path": str(image_path.relative_to(root)),"error": str(exc),}
                 failures.append(failure)
     return metadata_inventory, failures
+
+
+def inspect_image_file(image_path: str | Path) -> dict:
+    """
+    Inspect an image and return its dimensions, mode, channel count,
+    and file size.
+
+    Raises an error if the path is invalid or the image cannot be read.
+    """
+    path = Path(image_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Image file does not exist: {path}")
+    if not path.is_file():
+        raise IsADirectoryError(f"Image path is not a file: {path}")
+    
+    try:
+        with Image.open(path) as image:
+            image.load()
+            image_info = {
+                "width" : image.width,
+                "height" : image.height,
+                "channels" : len(image.getbands()),
+                "image_mode" : image.mode,
+                "file_size_bytes" : path.stat().st_size
+                }
+        
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError(f"Unable to read image file {path}") from exc
+        
+    return image_info
+
 
