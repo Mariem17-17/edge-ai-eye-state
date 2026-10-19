@@ -76,11 +76,13 @@ def test_builds_inventory_record(tmp_path):
     image_path = (image_dir / "s0001_01842_0_0_1_0_0_01.png")
     image_path.touch()
 
-    inventory = build_dataset_inventory(tmp_path)
+    inventory, failures = build_dataset_inventory(tmp_path)
     expected_relative_path = str(Path("train")/ "open"/ "s0001_01842_0_0_1_0_0_01.png")
     assert len(inventory) == 1
 
     record = inventory[0]
+
+    assert failures == []
 
     assert record["subject_id"] == "s0001"
     assert record["image_id"] == "01842"
@@ -112,9 +114,12 @@ def test_builds_multiple_inventory_records(tmp_path):
     image3_path = (image3_dir / "s0002_00003_1_1_1_1_1_02.png")
     image3_path.touch()
 
-    inventory = build_dataset_inventory(tmp_path)
+    inventory, failures = build_dataset_inventory(tmp_path)
 
     assert len(inventory) == 3
+
+    assert failures == []
+
     assert inventory[0]["image_id"] == "00002"
     assert inventory[0]["eye_state"] == 0
 
@@ -128,9 +133,10 @@ def test_builds_multiple_inventory_records(tmp_path):
     assert inventory[2]["sensor_id"] == "02"
 
 def test_build_inventory_returns_empty_list_for_empty_directory(tmp_path,):
-    inventory = build_dataset_inventory(tmp_path)
+    inventory, failures = build_dataset_inventory(tmp_path)
 
     assert inventory == []
+    assert failures == []
 
 
 def test_build_inventory_ignores_unsupported_files(tmp_path):
@@ -151,13 +157,59 @@ def test_build_inventory_ignores_unsupported_files(tmp_path):
     csv_path = (csv_dir / "csv_file.csv")
     csv_path.touch()
 
-    inventory = build_dataset_inventory(tmp_path)
+    inventory, failures = build_dataset_inventory(tmp_path)
     assert len(inventory) == 1
+    assert failures == []
 
 
-def test_build_inventory_rejects_invalid_filename(tmp_path):
+def test_collects_invalid_filename_failure(tmp_path):
     invalid_image = tmp_path / "invalid_image.png"
     invalid_image.touch()
 
-    with pytest.raises(ValueError,match="expected 8 components",):
-        build_dataset_inventory(tmp_path)
+    inventory, failures = build_dataset_inventory(tmp_path)
+
+    assert inventory == []
+    assert len(failures) == 1
+
+    failure = failures[0]
+
+    assert failure["relative_path"] == "invalid_image.png"
+    assert "expected 8 components" in failure["error"]
+
+def test_continues_after_invalid_filename(tmp_path):
+    valid_image = (tmp_path / "s0001_01842_0_0_1_0_0_01.png")
+    invalid_image = tmp_path / "invalid_image.png"
+
+    valid_image.touch()
+    invalid_image.touch()
+
+    inventory, failures = build_dataset_inventory(tmp_path)
+
+    assert len(inventory) == 1
+    assert inventory[0]["subject_id"] == "s0001"
+    assert inventory[0]["image_id"] == "01842"
+
+    assert len(failures) == 1
+    assert failures[0]["relative_path"] == "invalid_image.png"
+
+def test_collects_multiple_filename_failures(tmp_path):
+    invalid_image_1 = tmp_path / "invalid_1.png"
+    invalid_image_2 = tmp_path / "invalid_2.png"
+
+    invalid_image_1.touch()
+    invalid_image_2.touch()
+
+    inventory, failures = build_dataset_inventory(tmp_path)
+
+    assert inventory == []
+    assert len(failures) == 2
+
+    failure_paths = {
+        failure["relative_path"]
+        for failure in failures
+    }
+
+    assert failure_paths == {
+        "invalid_1.png",
+        "invalid_2.png",
+    }

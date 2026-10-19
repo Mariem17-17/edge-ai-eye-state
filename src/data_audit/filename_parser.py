@@ -7,7 +7,11 @@ ALLOWED_EXTENSIONS = {".png"}
 # subject_id image_id gender glasses eye_state reflections lighting sensor_id
 
 def parse_mrl_filename(path: str | Path):
-    
+    """
+    Parse and validate the metadata encoded in an MRL image filename.
+
+    Returns the extracted metadata as a dictionary.
+    """
     file_path = Path(path)
     filename_without_extension = file_path.stem
     extension = file_path.suffix.lower()
