@@ -64,13 +64,32 @@ def build_dataset_inventory(dataset_root: str | Path,) -> tuple[list[dict], list
     metadata_inventory = []
     failures = []
     for image_path in image_paths:
+        relative_path = str(image_path.relative_to(root))
         try:
             one_metadata = parse_mrl_filename(image_path)
-            one_metadata['relative_path'] = str(image_path.relative_to(root))
-            metadata_inventory.append(one_metadata)
         except ValueError as exc:
-                failure = {"relative_path": str(image_path.relative_to(root)),"error": str(exc),}
-                failures.append(failure)
+            failure = {
+                "relative_path": relative_path,
+                "stage": "filename_parsing",
+                "error": str(exc),
+            }
+
+            failures.append(failure)
+            continue
+        try:
+            image_info = inspect_image_file(image_path)
+        except ValueError as exc:
+            failure = {
+                "relative_path": relative_path,
+                "stage": "image_inspection",
+                "error": str(exc),
+            }
+            failures.append(failure)
+            continue
+        one_metadata["relative_path"] = relative_path
+        one_metadata = one_metadata |image_info
+        metadata_inventory.append(one_metadata)
+
     return metadata_inventory, failures
 
 
@@ -102,5 +121,3 @@ def inspect_image_file(image_path: str | Path) -> dict:
         raise ValueError(f"Unable to read image file {path}") from exc
         
     return image_info
-
-

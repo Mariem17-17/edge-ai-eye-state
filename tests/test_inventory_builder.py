@@ -1,8 +1,12 @@
 import pytest
 from pathlib import Path
+from PIL import Image
 
-from src.data_audit.inventory_builder import discover_image_files
-from src.data_audit.inventory_builder import build_dataset_inventory
+
+from src.data_audit.inventory_builder import (
+    discover_image_files,
+    build_dataset_inventory,
+    )
 
 def test_discovers_png_files_recursively(tmp_path):
     subject_1 = tmp_path / "subject_1"
@@ -74,7 +78,11 @@ def test_builds_inventory_record(tmp_path):
     image_dir.mkdir(parents=True)
 
     image_path = (image_dir / "s0001_01842_0_0_1_0_0_01.png")
-    image_path.touch()
+    Image.new(
+    mode="L",
+    size=(80, 40),
+    color=128,
+    ).save(image_path)
 
     inventory, failures = build_dataset_inventory(tmp_path)
     expected_relative_path = str(Path("train")/ "open"/ "s0001_01842_0_0_1_0_0_01.png")
@@ -95,6 +103,12 @@ def test_builds_inventory_record(tmp_path):
     assert record["extension"] == ".png"
     assert record["relative_path"] == expected_relative_path
 
+    assert record["width"] == 80
+    assert record["height"] == 40
+    assert record["channels"] == 1
+    assert record["image_mode"] == "L"
+    assert record["file_size_bytes"] == image_path.stat().st_size
+
 
 def test_builds_multiple_inventory_records(tmp_path):
     image1_dir = tmp_path / "train" / "open"
@@ -106,13 +120,25 @@ def test_builds_multiple_inventory_records(tmp_path):
     image3_dir.mkdir(parents=True)
 
     image1_path = (image1_dir / "s0001_00001_0_0_1_0_0_01.png")
-    image1_path.touch()
+    Image.new(
+    mode="L",
+    size=(80, 40),
+    color=128,
+    ).save(image1_path)
 
     image2_path = (image2_dir / "s0001_00002_0_0_0_0_0_01.png")
-    image2_path.touch()
+    Image.new(
+    mode="L",
+    size=(64, 32),
+    color=100,
+    ).save(image2_path)
 
     image3_path = (image3_dir / "s0002_00003_1_1_1_1_1_02.png")
-    image3_path.touch()
+    Image.new(
+    mode="RGB",
+    size=(96, 48),
+    color=(120, 150, 200),
+    ).save(image3_path)
 
     inventory, failures = build_dataset_inventory(tmp_path)
 
@@ -132,6 +158,17 @@ def test_builds_multiple_inventory_records(tmp_path):
     assert inventory[2]["glasses"] == 1
     assert inventory[2]["sensor_id"] == "02"
 
+    assert inventory[0]["width"] == 64
+    assert inventory[0]["height"] == 32
+
+    assert inventory[1]["width"] == 80
+    assert inventory[1]["channels"] == 1
+
+    assert inventory[2]["width"] == 96
+    assert inventory[2]["height"] == 48
+    assert inventory[2]["channels"] == 3
+    assert inventory[2]["image_mode"] == "RGB"
+
 def test_build_inventory_returns_empty_list_for_empty_directory(tmp_path,):
     inventory, failures = build_dataset_inventory(tmp_path)
 
@@ -149,7 +186,11 @@ def test_build_inventory_ignores_unsupported_files(tmp_path):
     csv_dir.mkdir(parents=True)
 
     image_path = (image_dir / "s0001_00001_0_0_1_0_0_01.png")
-    image_path.touch()
+    Image.new(
+    mode="L",
+    size=(80, 40),
+    color=128,
+    ).save(image_path)
 
     text_path = (text_dir / "text.txt")
     text_path.touch()
@@ -171,16 +212,19 @@ def test_collects_invalid_filename_failure(tmp_path):
     assert inventory == []
     assert len(failures) == 1
 
-    failure = failures[0]
-
-    assert failure["relative_path"] == "invalid_image.png"
-    assert "expected 8 components" in failure["error"]
+    assert failures[0]["stage"] == "filename_parsing"
+    assert failures[0]["relative_path"] == "invalid_image.png"
+    assert "expected 8 components" in failures[0]["error"]
 
 def test_continues_after_invalid_filename(tmp_path):
     valid_image = (tmp_path / "s0001_01842_0_0_1_0_0_01.png")
     invalid_image = tmp_path / "invalid_image.png"
 
-    valid_image.touch()
+    Image.new(
+    mode="L",
+    size=(80, 40),
+    color=128,
+    ).save(valid_image)
     invalid_image.touch()
 
     inventory, failures = build_dataset_inventory(tmp_path)
@@ -213,3 +257,22 @@ def test_collects_multiple_filename_failures(tmp_path):
         "invalid_1.png",
         "invalid_2.png",
     }
+    assert all(
+    failure["stage"] == "filename_parsing"
+    for failure in failures
+    )
+
+def test_collects_image_inspection_failure(tmp_path):
+    corrupted_image = (tmp_path / "s0001_01842_0_0_1_0_0_01.png")
+    corrupted_image.write_text("This is not image data.")
+
+    inventory, failures = build_dataset_inventory(tmp_path)
+
+    assert inventory == []
+    assert len(failures) == 1
+
+    failure = failures[0]
+
+    assert failure["relative_path"] == corrupted_image.name
+    assert failure["stage"] == "image_inspection"
+    assert "Unable to read image" in failure["error"]
