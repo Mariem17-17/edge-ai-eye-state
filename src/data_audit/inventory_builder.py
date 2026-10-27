@@ -1,19 +1,3 @@
-# Dataset directory
-#        ↓
-# Recursive PNG discovery
-#        ↓
-# parse_mrl_filename(image_path)
-#        ↓
-# Valid metadata ────── Invalid-file report
-#        ↓
-# Dataset inventory
-
-# Receive a dataset root directory
-# Validate that the directory exists
-# Discover .png files recursively
-# Return the paths in a deterministic order
-# Ignore non-PNG files
-
 from pathlib import Path
 
 from src.data_audit.filename_parser import parse_mrl_filename
