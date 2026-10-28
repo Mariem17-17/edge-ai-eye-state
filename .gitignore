@@ -28,6 +28,10 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Generated dataset audit reports
+# Generated dataset audit and split reports
 metadata/dataset_inventory.csv
 metadata/processing_failures.csv
+metadata/subject_summary.csv
+metadata/train.csv
+metadata/validation.csv
+metadata/test.csv
